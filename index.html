@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Baba AI YouTube Agent</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#10121c;color:white}
+header{background:#191d2d;padding:22px 15px;text-align:center;border-bottom:2px solid #8055ff}
+header h1{margin:0;color:#b9a1ff;font-size:25px}
+header p{color:#ccc;font-size:13px}
+.container{padding:16px;max-width:700px;margin:auto}
+.card{background:#1b2031;border:1px solid #343a51;border-radius:14px;padding:17px;margin-bottom:15px}
+h2{font-size:19px;margin-top:0}
+label{display:block;margin:12px 0 6px}
+input,textarea,select{width:100%;padding:12px;border-radius:8px;border:1px solid #454b63;background:#101522;color:white;font-size:15px}
+textarea{min-height:100px;resize:vertical}
+button{width:100%;padding:13px;margin-top:10px;border:0;border-radius:9px;background:#7950f2;color:white;font-weight:bold;font-size:15px;cursor:pointer;transition:opacity .2s}
+button:hover{opacity:.85}
+button:active{transform:scale(.98)}
+button:disabled{opacity:.5;cursor:not-allowed}
+.secondary{background:#303950}
+.green{background:#18865d}
+.status{background:#111725;padding:12px;border-radius:8px;color:#8fffc1;overflow-wrap:anywhere}
+.error-status{background:#2a1115;color:#ff8a8a}
+.small{font-size:12px;color:#b9bfd0;line-height:1.6}
+#result{white-space:pre-wrap;line-height:1.7;overflow-wrap:anywhere}
+#seoResult{white-space:pre-wrap;line-height:1.7;overflow-wrap:anywhere}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid button{margin:0}
+.spinner{display:inline-block;width:16px;height:16px;border:3px solid #555;border-top-color:#b9a1ff;border-radius:50%;animation:spin 1s linear infinite;vertical-align:middle;margin-right:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:bold}
+.badge-demo{background:#4a3a1a;color:#ffc870}
+.badge-ai{background:#1a3a2a;color:#8fffc1}
+#loadingOverlay{display:none;text-align:center;padding:20px}
+.info-box{background:#111725;border:1px solid #2a3050;border-radius:10px;padding:14px;margin-top:10px;font-size:13px;line-height:1.7;color:#b9bfd0}
+.info-box b{color:#b9a1ff}
+</style>
+  <meta property="og:image" content="https://bolt.new/static/og_default.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://bolt.new/static/og_default.png">
+</head>
+<body>
+<header>
+<h1>🤖 BABA AI</h1>
+<p>आपका अपना YouTube Automation Agent</p>
+</header>
+<div class="container">
+
+<div class="card">
+<h2>📺 YouTube Channel</h2>
+<p id="channelStatus" class="status">अभी चैनल कनेक्ट नहीं है।</p>
+<button onclick="connectYouTube()">🔗 YouTube चैनल Connect करें</button><button class="secondary" onclick="refreshYouTubeStatus()">🔄 कनेक्शन स्थिति जाँचें</button>
+<p class="small">वास्तविक चैनल कनेक्शन के लिए Google OAuth और YouTube API सेटअप जरूरी है।</p>
+</div>
+
+<div class="card">
+<h2>🔎 वीडियो का विषय</h2>
+<label>अपना विषय लिखें</label>
+<input id="topic" placeholder="जैसे: ताजमहल के रहस्य">
+<label>वीडियो की भाषा</label>
+<select id="language">
+<option>हिंदी</option>
+<option>English</option>
+</select>
+<label>वीडियो का विज़ुअल स्टाइल</label>
+<select id="visualStyle">
+<option value="3d-cartoon" selected>🎭 3D कार्टून कॉमेडी (Recommended)</option>
+<option value="cinematic">🎬 सिनेमैटिक</option>
+<option value="realistic">📷 वास्तविक तस्वीरें</option>
+</select>
+<p class="small">3D मोड में AI एक जैसे कार्टून किरदारों और भारतीय लोकेशन वाली तस्वीरें बनाने की कोशिश करेगा। MP4 अभी दृश्यों + हिंदी आवाज़ का वीडियो है; वास्तविक 3D character animation/lip-sync अलग सुविधा है। AI इमेज API की quota/बिलिंग लागू हो सकती है।</p>
+<label>वीडियो की अवधि</label>
+<select id="duration">
+<option value="1" selected>1 मिनट</option>
+<option value="2">2 मिनट</option>
+<option value="3">3 मिनट</option>
+<option value="4">4 मिनट</option>
+<option value="5">5 मिनट</option>
+</select>
+<p class="small">चुनी गई अवधि के अनुसार स्क्रिप्ट और narration तैयार होंगे। MP4 में अधिकतम 3 स्थिर दृश्य + हिंदी आवाज़ (slideshow शैली) जुड़ेंगे। Free hosting पर 4–5 मिनट का render समय/मेमोरी के कारण असफल हो सकता है; असफल होने पर स्क्रिप्ट और assets सुरक्षित रहेंगे।</p>
+<button onclick="makeOutline()">📝 वीडियो की रूपरेखा बनाएँ</button>
+<button class="green" onclick="generateFullScript()" id="btnGenerateScript">🤖 पूरी AI स्क्रिप्ट बनाएँ</button>
+<button class="green" id="btnRunFullAutomation" onclick="runFullAutomation()">🚀 पूरा ऑटोमैटिक काम शुरू करें</button>
+<p class="small">यह एजेंट क्रम से स्क्रिप्ट → SEO → तस्वीरें → हिंदी आवाज़ → MP4 बनाएगा। हर चरण पूरा होते ही एजेंट अगला चरण अपने-आप शुरू करेगा। MP4 तैयार होने पर YouTube पर Private upload करेगा; quota या कनेक्शन त्रुटि पर रुककर कारण दिखाएगा।</p>
+<button class="secondary" onclick="saveProject()">💾 प्रोजेक्ट सेव करें</button>
+</div>
+
+<div class="card">
+<h2>✍️ AI Script Studio</h2>
+<p id="scriptBadge" class="small"></p>
+<div id="scriptLoading" style="display:none;padding:14px;text-align:center">
+<span class="spinner"></span> AI स्क्रिप्ट लिख रहा है... कृपया प्रतीक्षा करें।
+</div>
+<textarea id="script" placeholder="यहाँ आपकी वीडियो स्क्रिप्ट दिखाई देगी..."></textarea>
+<div class="grid">
+<button onclick="copyScript()">📋 कॉपी</button>
+<button class="secondary" onclick="downloadScript()">⬇️ डाउनलोड</button>
+</div>
+</div>
+
+<div class="card">
+<h2>📈 YouTube SEO</h2>
+<p class="small">शीर्षक, विवरण, कीवर्ड्स, हैशटैग्स और थंबनेल टेक्स्ट — AI से तैयार।</p>
+<button onclick="generateSEO()" id="btnGenerateSEO">🤖 AI से SEO बनाएँ</button>
+<div id="seoLoading" style="display:none;padding:14px;text-align:center">
+<span class="spinner"></span> AI SEO तैयार कर रहा है... कृपया प्रतीक्षा करें।
+</div>
+<div id="seoResult" style="display:none"></div>
+<div class="grid" style="margin-top:10px">
+<button onclick="copySEO()" class="secondary">📋 SEO कॉपी</button>
+<button class="secondary" onclick="downloadSEO()">⬇️ SEO डाउनलोड</button>
+</div>
+</div>
+
+<div class="card">
+<h2>🎬 वीडियो निर्माण</h2>
+<button onclick="showFeature('voice')">🎙️ हिंदी आवाज बनाएँ</button>
+<button onclick="showFeature('images')">🖼️ वीडियो की तस्वीरें बनाएँ</button>
+<button onclick="showFeature('video')">🎞️ स्क्रिप्ट से MP4 वीडियो बनाएँ</button>
+<button onclick="showFeature('thumbnail')">🖼️ थंबनेल बनाएँ</button>
+<button class="green" onclick="showUploadForm()">📤 MP4 वीडियो YouTube पर अपलोड करें</button>
+<p id="featureStatus" class="status">आपका एजेंट शुरुआत होने के लिए तैयार है।</p>
+<div id="featureInfo" style="display:none"></div>
+</div>
+
+<div class="card" id="workflowCheckpointCard">
+<h2>🧭 काम की प्रगति सेव करें / अगले दिन यहीं से शुरू करें</h2>
+<p class="small">स्क्रिप्ट, SEO और पूरा हुआ चरण इस ब्राउज़र में सेव होगा। API quota खत्म होने पर पहले से सेव काम नहीं मिटेगा। तस्वीर, आवाज़ और MP4 फ़ाइलें अलग से डाउनलोड करें; वे checkpoint में शामिल नहीं हैं।</p>
+<div id="workflowCheckpointStatus" class="status" aria-live="polite">Checkpoint तैयार है।</div>
+<div class="grid"><button type="button" onclick="saveWorkflowCheckpoint(true)">💾 अभी सेव करें</button><button type="button" class="secondary" onclick="restoreWorkflowCheckpoint(true)">↩️ सेव काम वापस लाएँ</button></div>
+<div class="grid"><button type="button" class="secondary" onclick="exportWorkflowCheckpoint()">⬇️ Backup JSON डाउनलोड</button><button type="button" class="secondary" onclick="document.getElementById('workflowImportFile').click()">📂 Backup वापस लाएँ</button></div>
+<input id="workflowImportFile" type="file" accept="application/json,.json" style="display:none">
+<p class="small" id="workflowCheckpointStages">अभी कोई चरण सेव नहीं हुआ।</p>
+</div>
+
+<div class="card">
+<h2>📦 प्रोजेक्ट डाउनलोड</h2>
+<p class="small">पूरा प्रोजेक्ट ZIP फ़ाइल के रूप में डाउनलोड करें (बिना API keys या secrets के)।</p>
+<a href="/baba-ai-youtube-agent.zip" download="baba-ai-youtube-agent.zip" style="display:block;width:100%;padding:13px;margin-top:10px;border:0;border-radius:9px;background:#18865d;color:white;font-weight:bold;font-size:15px;cursor:pointer;text-align:center;text-decoration:none;transition:opacity .2s">⬇️ प्रोजेक्ट ZIP डाउनलोड करें</a>
+</div>
+
+<div class="card">
+<h2>📋 एजेंट आउटपुट</h2>
+<div id="result">नमस्ते! Baba AI YouTube Agent में आपका स्वागत है।</div>
+</div>
+
+</div>
+
+<script>
+var currentSEO = "";
+var savedSceneImages = [];
+var savedFailedScenes = [];
+
+// Parse API responses safely. Express/Render can return an HTML error page
+// (which begins with "<!DOCTYPE") instead of JSON; show a useful diagnostic.
+async function readApiJson(response) {
+  var raw = await response.text();
+  try {
+    return JSON.parse(raw);
+  } catch (_) {
+    var endpoint = response.url || "API endpoint";
+    var preview = raw.slice(0, 160).replace(/\s+/g, " ").trim();
+    if (/^\s*<!doctype\s+html|^\s*<html/i.test(raw)) {
+      throw new Error("API से JSON के बजाय HTML पेज मिला (HTTP " + response.status + ", " + endpoint + ")। संभव है Render पर पुराना deploy हो, route गलत हो, या server/proxy error दे रहा हो। Render Logs और deployment status जाँचें।");
+    }
+    throw new Error("API response JSON नहीं है (HTTP " + response.status + ", " + endpoint + "): " + preview);
+  }
+}
+
+
+function setBadge(text, isAI) {
+  var el = document.getElementById('scriptBadge');
+  if (!text) { el.innerHTML = ''; return; }
+  var cls = isAI ? 'badge badge-ai' : 'badge badge-demo';
+  var label = isAI ? 'AI जनरेटेड' : 'डेमो रूपरेखा';
+  el.innerHTML = '<span class="' + cls + '">' + label + '</span>';
+}
+
+function connectYouTube() { window.location.href = '/api/youtube/connect'; }
+async function refreshYouTubeStatus() {
+  var status = document.getElementById('channelStatus');
+  try {
+    var response = await fetch('/api/youtube/status'); var data = await readApiJson(response);
+    status.textContent = !data.configured ? 'OAuth credentials Render में सेट नहीं हैं। README के setup steps करें।' :
+      data.connected ? '✅ Connected: ' + (data.channel?.title || 'YouTube चैनल') + ' (' + (data.channel?.id || '') + ')' :
+      'अभी चैनल Connect नहीं है। Connect बटन दबाएँ।';
+  } catch (_) { status.textContent = 'कनेक्शन स्थिति नहीं मिल सकी।'; }
+}
+function showUploadForm() {
+  var status = document.getElementById('featureStatus'), info = document.getElementById('featureInfo');
+  info.innerHTML = '<p class="small">तैयार MP4 चुनें। Upload आपके OAuth-connected चैनल पर होगा। Hosted सीमा 90 MB है।</p>' +
+    '<label>YouTube Title</label><input id="ytTitle" maxlength="100" placeholder="वीडियो का शीर्षक">' +
+    '<label>Description</label><textarea id="ytDescription" maxlength="5000" placeholder="वीडियो विवरण"></textarea>' +
+    '<label>Privacy</label><select id="ytPrivacy"><option value="private">Private (पहले यही चुनें)</option><option value="unlisted">Unlisted</option><option value="public">Public</option></select>' +
+    '<label>वीडियो फ़ाइल (MP4/MOV/WebM, 90 MB तक)</label><input id="ytVideoFile" type="file" accept="video/mp4,video/quicktime,video/webm">' +
+    '<button id="ytUploadButton" class="green" onclick="uploadVideoToYouTube()">⬆️ अभी YouTube पर अपलोड करें</button>' +
+    '<p id="ytUploadResult" class="status" role="status">फ़ाइल चुनकर Upload दबाएँ।</p>';
+  if (lastRenderedVideoBlob) {
+    var generatedUpload = document.createElement('button');
+    generatedUpload.className = 'green';
+    generatedUpload.textContent = '⬆️ अभी तैयार MP4 को YouTube पर अपलोड करें';
+    generatedUpload.addEventListener('click', uploadRenderedVideo);
+    info.appendChild(generatedUpload);
+  }
+  info.style.display = 'block'; status.textContent = 'YouTube upload form तैयार है।';
+}
+
+async function uploadRenderedVideo() {
+  if(!lastRenderedVideoBlob){document.getElementById('ytUploadResult').textContent='पहले MP4 वीडियो बनाएँ।';return;}
+  var title=document.getElementById('ytTitle').value.trim();
+  if(!title){document.getElementById('ytUploadResult').textContent='YouTube title भरें।';return;}
+  var button=document.getElementById('ytUploadButton'), result=document.getElementById('ytUploadResult');
+  if(button)button.disabled=true;
+  result.textContent='तैयार MP4 YouTube पर upload हो रहा है…';
+  try{
+    var response=await fetch('/api/youtube/upload',{method:'POST',headers:{
+      'Content-Type':'video/mp4','X-Video-Title':title,
+      'X-Video-Description':document.getElementById('ytDescription').value,
+      'X-Video-Privacy':document.getElementById('ytPrivacy').value
+    },body:lastRenderedVideoBlob});
+    var data=await readApiJson(response);if(!response.ok)throw new Error(data.error||'Upload विफल।');
+    result.textContent='✅ Upload सफल: '+data.url+' | Privacy: '+data.privacy;
+  }catch(error){result.textContent='❌ '+(error.message||'Upload failed');}
+  finally{if(button)button.disabled=false;}
+}
+
+async function uploadVideoToYouTube() {
+  var file = document.getElementById('ytVideoFile')?.files?.[0], title = document.getElementById('ytTitle')?.value.trim();
+  var result = document.getElementById('ytUploadResult'), button = document.getElementById('ytUploadButton');
+  if (!file || !title) { result.textContent = 'वीडियो फ़ाइल और title दोनों भरें।'; return; }
+  if (file.size > 90 * 1024 * 1024) { result.textContent = 'फ़ाइल 90 MB से बड़ी है।'; return; }
+  button.disabled = true; result.textContent = 'YouTube पर वीडियो भेजा जा रहा है…';
+  try {
+    var response = await fetch('/api/youtube/upload', { method:'POST', headers:{
+      'Content-Type':file.type || 'video/mp4','X-Video-Title':title,
+      'X-Video-Description':document.getElementById('ytDescription').value,
+      'X-Video-Privacy':document.getElementById('ytPrivacy').value
+    }, body:file });
+    var data = await readApiJson(response); if (!response.ok) throw new Error(data.error || 'Upload नहीं हो सका।');
+    result.textContent = '✅ Upload सफल: ' + data.url + ' | Privacy: ' + data.privacy;
+  } catch(error) { result.textContent = '❌ ' + (error.message || 'Upload failed'); }
+  finally { button.disabled = false; }
+}
+window.addEventListener('DOMContentLoaded', function() {
+  refreshYouTubeStatus();
+  if (new URLSearchParams(location.search).get('youtube') === 'connected') {
+    document.getElementById('result').textContent = 'YouTube OAuth connection सफल। अब MP4 upload करें।';
+    history.replaceState({}, '', location.pathname);
+  }
+});
+
+function makeOutline() {
+  var topic = document.getElementById('topic').value.trim();
+  var duration = document.getElementById('duration').value;
+  var lang = document.getElementById('language').value;
+  if (!topic) { alert('पहले वीडियो का विषय लिखें।'); return; }
+  var outline =
+    'BABA AI — VIDEO PLAN\n\n' +
+    'विषय: ' + topic + '\n' +
+    'भाषा: ' + lang + '\n' +
+    'अवधि: ' + duration + ' मिनट\n\n' +
+    '1. शुरुआत: दर्शकों के लिए दिलचस्प सवाल\n' +
+    '2. विषय का परिचय और पृष्ठभूमि\n' +
+    '3. मुख्य जानकारी — भाग 1\n' +
+    '4. मुख्य जानकारी — भाग 2\n' +
+    '5. उदाहरण और तथ्य-जाँच\n' +
+    '6. रोचक निष्कर्ष\n' +
+    '7. दर्शकों से लाइक और सब्स्क्राइब करने का अनुरोध\n\n' +
+    'नोट: यह डेमो रूपरेखा है। पूरी AI स्क्रिप्ट बनाने के लिए "पूरी AI स्क्रिप्ट बनाएँ" बटन दबाएँ।';
+  document.getElementById('script').value = outline;
+  setBadge(true, false);
+  document.getElementById('result').textContent = '✅ वीडियो की रूपरेखा तैयार हो गई! अब "पूरी AI स्क्रिप्ट बनाएँ" बटन से पूरी स्क्रिप्ट ले सकते हैं।';
+}
+
+async function generateFullScript() {
+  var topic = document.getElementById('topic').value.trim();
+  var duration = document.getElementById('duration').value;
+  var lang = document.getElementById('language').value;
+  if (!topic) { alert('पहले वीडियो का विषय लिखें।'); return; }
+
+  var btn = document.getElementById('btnGenerateScript');
+  var loading = document.getElementById('scriptLoading');
+  var textarea = document.getElementById('script');
+  var result = document.getElementById('result');
+
+  btn.disabled = true;
+  loading.style.display = 'block';
+  textarea.value = '';
+  setBadge('', false);
+  result.textContent = 'AI स्क्रिप्ट लिख रहा है...';
+
+  try {
+    var resp = await fetch('/api/script', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic: topic, duration: duration, language: lang, visualStyle: document.getElementById("visualStyle")?.value || "3d-cartoon" })
+    });
+    var data = await readApiJson(resp);
+    if (!resp.ok) {
+      throw new Error(data.error || 'स्क्रिप्ट बनाने में समस्या हुई।');
+    }
+    textarea.value = data.script;
+    setBadge(true, true);
+    result.textContent = '✅ पूरी AI स्क्रिप्ट तैयार हो गई! नीचे स्क्रिप्ट देखें।';
+  } catch (err) {
+    result.textContent = '❌ ' + (err.message || 'स्क्रिप्ट नहीं बन सकी।');
+    setBadge('', false);
+  } finally {
+    btn.disabled = false;
+    loading.style.display = 'none';
+  }
+}
+
+function extractAutoUploadDescription(seoText) {
+  // SEO package में पूरा analysis/keywords होता है; YouTube description में सिर्फ
+  // section 2 का वास्तविक description डालें, पूरा SEO document नहीं।
+  var section = String(seoText || '').split(/###\s*2\.\s*विस्तृत वीडियो विवरण[^\n]*\n/i)[1];
+  if (section) {
+    section = section.split(/\n###\s*3\./i)[0];
+    var fenced = section.match(/```(?:text)?\s*([\s\S]*?)```/i);
+    if (fenced && fenced[1].trim()) return fenced[1].trim();
+    return section.replace(/^\s*\*\*?[^\n]*\*\*?\s*$/gm, '').trim();
+  }
+  return String(seoText || '').slice(0, 5000).trim();
+}
+
+async function runFullAutomation() {
+  var button = document.getElementById('btnRunFullAutomation');
+  var status = document.getElementById('featureStatus');
+  var topic = document.getElementById('topic').value.trim();
+  if (!topic) { alert('पहले वीडियो का विषय लिखें।'); return; }
+  if (button.disabled) return;
+  button.disabled = true;
+  var originalText = button.textContent;
+  var stage = 'स्क्रिप्ट';
+  // पुराने रन का MP4 नए रन की सफलता न माना जाए।
+  lastRenderedVideoBlob = null;
+  try {
+    // हर नए रन में पुराने चरण हटाएँ, ताकि पिछली वीडियो की progress नई वीडियो पर न दिखे।
+    if (typeof window.resetWorkflowStages === 'function') window.resetWorkflowStages();
+    if (typeof window.markWorkflowStage === 'function') window.markWorkflowStage('विषय');
+    document.getElementById('result').textContent = '';
+    // हर रन में वर्तमान topic के लिए नया script/SEO बनाएँ; पिछले topic की सामग्री reuse न हो।
+    status.textContent = 'ऑटोमेशन 1/5: वर्तमान विषय के लिए नई AI स्क्रिप्ट बना रहा है…';
+    await generateFullScript();
+    if (!document.getElementById('script').value.trim() ||
+        !/^✅ पूरी AI स्क्रिप्ट तैयार हो गई/i.test(document.getElementById('result').textContent || '')) {
+      throw new Error('नई स्क्रिप्ट नहीं बनी। API key/quota जाँचें; आगे के चरण शुरू नहीं होंगे।');
+    }
+    if (typeof window.markWorkflowStage === 'function') window.markWorkflowStage('स्क्रिप्ट');
+    if (typeof window.saveWorkflowCheckpoint === 'function') window.saveWorkflowCheckpoint(false);
+
+    stage = 'YouTube SEO';
+    status.textContent = 'ऑटोमेशन 2/5: वर्तमान विषय के लिए नया YouTube SEO बना रहा है…';
+    currentSEO = '';
+    await generateSEO();
+    if (!String(currentSEO || '').trim() ||
+        !/^✅ YouTube SEO तैयार हो गया/i.test(document.getElementById('result').textContent || '')) {
+      throw new Error('नया SEO नहीं बना। quota/कनेक्शन जाँचें; आगे के चरण शुरू नहीं होंगे।');
+    }
+    if (typeof window.markWorkflowStage === 'function') window.markWorkflowStage('SEO');
+    if (typeof window.saveWorkflowCheckpoint === 'function') window.saveWorkflowCheckpoint(false);
+
+    stage = 'वीडियो';
+    status.textContent = 'ऑटोमेशन 3/5: तस्वीरें → हिंदी आवाज़ → MP4 क्रम से बना रहा है…';
+    // पुराने topic की तस्वीरें इस वीडियो में न मिलें।
+    savedSceneImages = [];
+    savedFailedScenes = [];
+    await generateAutoVideo();
+    if (!lastRenderedVideoBlob || !lastRenderedVideoBlob.size) {
+      throw new Error('MP4 अभी तैयार नहीं हुआ। ऊपर दिखाई गई त्रुटि ठीक करें; स्क्रिप्ट और SEO सेव रहेंगे।');
+    }
+    // generateAutoVideo तभी लौटता है जब असली scene images, narration और MP4 बन चुके हों।
+    if (typeof window.markWorkflowStage === 'function') {
+      window.markWorkflowStage('तस्वीरें');
+      window.markWorkflowStage('आवाज़');
+      window.markWorkflowStage('MP4 वीडियो');
+    }
+    if (typeof window.saveWorkflowCheckpoint === 'function') window.saveWorkflowCheckpoint(false);
+
+    stage = 'YouTube पर Private upload';
+    status.textContent = 'ऑटोमेशन 4/5: जुड़े हुए YouTube चैनल पर वीडियो Private रूप में अपलोड कर रहा है…';
+    // अपलोड अपने-आप होगा, लेकिन डिफ़ॉल्ट Private रहेगा ताकि अधूरा/गलत वीडियो सार्वजनिक न हो।
+    showUploadForm();
+    var titleField = document.getElementById('ytTitle');
+    var descriptionField = document.getElementById('ytDescription');
+    var privacyField = document.getElementById('ytPrivacy');
+    if (titleField) titleField.value = topic.slice(0, 100);
+    if (descriptionField) descriptionField.value = extractAutoUploadDescription(String(currentSEO || '')).slice(0, 5000);
+    if (privacyField) privacyField.value = 'private';
+    if (typeof refreshYouTubeStatus === 'function') await refreshYouTubeStatus();
+    var ytResult = document.getElementById('ytUploadResult');
+    if (!ytResult) throw new Error('YouTube upload form तैयार नहीं हुआ। MP4 बना है; Upload सेक्शन से दोबारा कोशिश करें।');
+    await uploadRenderedVideo();
+    var uploadMessage = ytResult.textContent || '';
+    if (!/^✅ Upload सफल:/.test(uploadMessage)) throw new Error('वीडियो तैयार है, लेकिन YouTube upload पूरा नहीं हुआ: ' + uploadMessage);
+    if (typeof window.markWorkflowStage === 'function') window.markWorkflowStage('YouTube अपलोड');
+    if (typeof window.saveWorkflowCheckpoint === 'function') window.saveWorkflowCheckpoint(false);
+    var result = document.getElementById('result');
+    status.textContent = '✅ ऑटोमेशन पूरा: स्क्रिप्ट → SEO → तस्वीरें → हिंदी आवाज़ → MP4 → YouTube पर Private upload सफल। वीडियो अभी सार्वजनिक नहीं है।';
+    if (result) result.textContent = '✅ पूरा workflow सफल। YouTube पर Private वीडियो अपलोड हो गया: ' + uploadMessage.replace('✅ Upload सफल: ', '');
+    var info = document.getElementById('featureInfo');
+    if (info) info.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } catch (error) {
+    status.textContent = '⏸️ ऑटोमेशन ' + stage + ' चरण पर रुका: ' + (error.message || 'अज्ञात त्रुटि') + ' पहले से तैयार स्क्रिप्ट/SEO सुरक्षित हैं। समस्या ठीक करके फिर “पूरा ऑटोमैटिक काम शुरू करें” दबाएँ।';
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
+
+async function generateSEO() {
+  var topic = document.getElementById('topic').value.trim();
+  var lang = document.getElementById('language').value;
+  if (!topic) { alert('पहले वीडियो का विषय लिखें।'); return; }
+
+  var btn = document.getElementById('btnGenerateSEO');
+  var loading = document.getElementById('seoLoading');
+  var seoDiv = document.getElementById('seoResult');
+
+  btn.disabled = true;
+  loading.style.display = 'block';
+  seoDiv.style.display = 'none';
+
+  try {
+    var resp = await fetch('/api/seo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic: topic, language: lang })
+    });
+    var data = await readApiJson(resp);
+    if (!resp.ok) {
+      throw new Error(data.error || 'SEO बनाने में समस्या हुई।');
+    }
+    currentSEO = data.seo;
+    seoDiv.textContent = data.seo;
+    seoDiv.style.display = 'block';
+    document.getElementById('result').textContent = '✅ YouTube SEO तैयार हो गया!';
+  } catch (err) {
+    seoDiv.textContent = '❌ ' + (err.message || 'SEO नहीं बन सका।');
+    seoDiv.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    loading.style.display = 'none';
+  }
+}
+
+function copyScript() {
+  var text = document.getElementById('script').value;
+  if (!text) { alert('पहले स्क्रिप्ट बनाएँ।'); return; }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text)
+      .then(function() { alert('स्क्रिप्ट कॉपी हो गई!'); })
+      .catch(function() { fallbackCopy(text); });
+  } else { fallbackCopy(text); }
+}
+
+function fallbackCopy(text) {
+  var area = document.getElementById('script');
+  area.focus(); area.select();
+  try { document.execCommand('copy'); alert('कॉपी करने की कोशिश पूरी हुई।'); }
+  catch (e) { alert('टेक्स्ट चुनकर Copy दबाएँ।'); }
+}
+
+function copySEO() {
+  if (!currentSEO) { alert('पहले SEO बनाएँ।'); return; }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(currentSEO)
+      .then(function() { alert('SEO कॉपी हो गई!'); })
+      .catch(function() { fallbackCopySEO(); });
+  } else { fallbackCopySEO(); }
+}
+
+function fallbackCopySEO() {
+  var temp = document.createElement('textarea');
+  temp.value = currentSEO;
+  document.body.appendChild(temp);
+  temp.select();
+  try { document.execCommand('copy'); alert('SEO कॉपी करने की कोशिश पूरी हुई।'); }
+  catch (e) { alert('टेक्स्ट चुनकर Copy दबाएँ।'); }
+  document.body.removeChild(temp);
+}
+
+function downloadScript() {
+  var text = document.getElementById('script').value;
+  if (!text) { alert('पहले स्क्रिप्ट बनाएँ।'); return; }
+  var blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = 'Baba-AI-Script.txt'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function downloadSEO() {
+  if (!currentSEO) { alert('पहले SEO बनाएँ।'); return; }
+  var blob = new Blob([currentSEO], { type: 'text/plain;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = 'Baba-AI-SEO.txt'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function saveProject() {
+  var data = {
+    topic: document.getElementById('topic').value,
+    duration: document.getElementById('duration').value,
+    language: document.getElementById('language').value,
+    script: document.getElementById('script').value,
+    seo: currentSEO
+  };
+  try {
+    localStorage.setItem('babaAIProject', JSON.stringify(data));
+    alert('प्रोजेक्ट इस ब्राउज़र में सेव हो गया!');
+  } catch (e) {
+    alert('सेव नहीं हो पाया। ब्राउज़र स्टोरेज की अनुमति जाँचें।');
+  }
+}
+
+var lastRenderedVideoBlob = null;
+var lastRenderedVideoUrl = null;
+
+var featureDetails = {
+  voice: {
+    msg: '🎙️ हिंदी आवाज बनाने के लिए Text-to-Speech (TTS) API कनेक्ट करना होगा।',
+    info: '<b>आवश्यक सेवाएँ:</b><br>' +
+      '• Google Cloud Text-to-Speech API, या<br>' +
+      '• Azure Cognitive Services TTS, या<br>' +
+      '• ElevenLabs API<br><br>' +
+      '<b>क्या करना होगा:</b><br>' +
+      '1. उपरोक्त में से किसी एक सेवा का खाता बनाएँ।<br>' +
+      '2. API Key प्राप्त करें।<br>' +
+      '3. सर्वर के .env में API Key सेट करें।<br>' +
+      '4. सर्वर में TTS endpoint बनाएँ जो स्क्रिप्ट को आवाज में बदले।<br><br>' +
+      '<b>ध्यान दें:</b> अभी कोई ऑडियो फ़ाइल नहीं बनती। यह एक इंटीग्रेशन पॉइंट है।'
+  },
+  images: {
+    msg: '🖼️ स्क्रिप्ट से AI दृश्य-तस्वीरें जनरेट करें।',
+    info: '<b>यह फीचर कैसे काम करता है:</b><br>' +
+      '• Gemini image-generation API से अधिकतम 3 दृश्य बनते हैं।<br>' +
+      '• तस्वीरें बनते ही नीचे preview और download लिंक दिखेंगे।<br>' +
+      '• API quota (429), model access या अस्थायी सेवा त्रुटि होने पर नीचे वास्तविक कारण दिखेगा।<br><br>' +
+      '<b>ज़रूरी:</b> Render Environment में GEMINI_API_KEY सेट होनी चाहिए और चुने गए मॉडल की API access उपलब्ध होनी चाहिए।'
+  },
+  video: {
+    msg: '🎞️ पूरा वीडियो बनाने के लिए आवाज, दृश्य, और वीडियो रेंडरिंग सेवाएँ जोड़नी होंगी।',
+    info: '<b>आवश्यक सेवाएँ:</b><br>' +
+      '• TTS API (आवाज के लिए)<br>' +
+      '• Image Generation API (दृश्यों के लिए)<br>' +
+      '• FFmpeg या वीडियो रेंडरिंग सेवा (तस्वीर + आवाज = वीडियो)<br><br>' +
+      '<b>क्या करना होगा:</b><br>' +
+      '1. स्क्रिप्ट से आवाज जनरेट करें (TTS)।<br>' +
+      '2. दृश्यों के अनुसार तस्वीरें जनरेट करें।<br>' +
+      '3. FFmpeg से आवाज + तस्वीरों को जोड़कर वीडियो बनाएँ।<br>' +
+      '4. सर्वर में रेंडरिंग endpoint बनाएँ।<br><br>' +
+      '<b>ध्यान दें:</b> अभी कोई वीडियो फ़ाइल नहीं बनती। यह एक इंटीग्रेशन पॉइंट है।'
+  },
+  thumbnail: {
+    msg: '🖼️ थंबनेल बनाने के लिए Image Generation या डिजाइन API कनेक्ट करना होगा।',
+    info: '<b>आवश्यक सेवाएँ:</b><br>' +
+      '• Image Generation API (Gemini, DALL-E, या Stable Diffusion)<br>' +
+      '• या Canva API / डिजाइन टूल<br><br>' +
+      '<b>क्या करना होगा:</b><br>' +
+      '1. विषय और SEO से थंबनेल आइडिया बनाएँ।<br>' +
+      '2. Image API से थंबनेल बैकग्राउंड जनरेट करें।<br>' +
+      '3. टेक्स्ट ओवरले जोड़ें (Canvas API या डिजाइन टूल से)।<br><br>' +
+      '<b>ध्यान दें:</b> अभी कोई थंबनेल नहीं बनता। यह एक इंटीग्रेशन पॉइंट है।'
+  },
+  upload: {
+    msg: '📤 YouTube पर अपलोड के लिए Google OAuth 2.0 और YouTube Data API v3 सेटअप करना होगा।',
+    info: '<b>क्या करना होगा:</b><br>' +
+      '1. Google Cloud Console (console.cloud.google.com) पर जाएँ।<br>' +
+      '2. नया प्रोजेक्ट बनाएँ।<br>' +
+      '3. YouTube Data API v3 को Enable करें।<br>' +
+      '4. OAuth 2.0 Client ID बनाएँ (Web application type)।<br>' +
+      '5. Client ID और Client Secret को सर्वर के .env में सेट करें:<br>' +
+      '&nbsp;&nbsp;YOUTUBE_CLIENT_ID=...<br>' +
+      '&nbsp;&nbsp;YOUTUBE_CLIENT_SECRET=...<br>' +
+      '6. सर्वर में OAuth flow बनाएँ।<br>' +
+      '7. उपयोगकर्ता की स्पष्ट अनुमति के बिना कुछ भी अपलोड न करें।<br><br>' +
+      '<b>सुरक्षा:</b> OAuth secrets कभी भी frontend में न रखें। सिर्फ सर्वर पर रखें।'
+  }
+};
+
+
+async function generateSceneImages() {
+  var script = document.getElementById('script').value.trim();
+  var status = document.getElementById('featureStatus');
+  var info = document.getElementById('featureInfo');
+  var button = document.getElementById('btnGenerateSceneImages');
+
+  if (!script) {
+    status.textContent = 'पहले AI Script Studio में स्क्रिप्ट बनाएँ।';
+    return;
+  }
+
+  button.disabled = true;
+  status.textContent = 'स्क्रिप्ट के दृश्य और तस्वीरें बनाई जा रही हैं…';
+  info.replaceChildren();
+  var progress = document.createElement('p');
+  progress.textContent = 'Gemini अधिकतम 3 दृश्य-तस्वीरें बना रहा है। इसमें समय लग सकता है।';
+  info.appendChild(progress);
+
+  try {
+    var response = await fetch('/api/images', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({script:script,visualStyle:document.getElementById('visualStyle')?.value||'3d-cartoon'})});
+    var data = await readApiJson(response);
+    if (Array.isArray(data.images)) data.images.forEach(function(item){
+      var ix=savedSceneImages.findIndex(function(old){return Number(old.scene)===Number(item.scene);});
+      if(ix>=0)savedSceneImages[ix]=item;else savedSceneImages.push(item);
+    });
+    if (Array.isArray(data.failedScenes)) savedFailedScenes=data.failedScenes;
+    if (!response.ok && !savedSceneImages.length) throw new Error(data.error || 'तस्वीरें नहीं बन सकीं।');
+    if (!savedSceneImages.length) throw new Error(data.error || 'कोई वास्तविक तस्वीर उपलब्ध नहीं है।');
+    info.replaceChildren();
+    savedSceneImages.slice().sort(function(a,b){return Number(a.scene)-Number(b.scene);}).forEach(function(item,index) {
+      var card = document.createElement('section');
+      card.style.marginTop = '16px';
+      card.style.padding = '12px';
+      card.style.border = '1px solid #343a51';
+      card.style.borderRadius = '10px';
+
+      var sceneNumber = Number(item.scene) || (index + 1);
+      var title = document.createElement('h3');
+      title.textContent = 'दृश्य ' + sceneNumber + ': ' + (item.title || 'वीडियो दृश्य');
+      card.appendChild(title);
+
+      var image = document.createElement('img');
+      image.alt = title.textContent;
+      image.src = 'data:' + (item.mimeType || 'image/png') + ';base64,' + item.imageBase64;
+      image.style.width = '100%';
+      image.style.height = 'auto';
+      image.style.borderRadius = '8px';
+      image.style.display = 'block';
+      card.appendChild(image);
+
+      var download = document.createElement('a');
+      download.href = image.src;
+      var ext = (item.mimeType || 'image/png').indexOf('jpeg') >= 0 ? 'jpg' : ((item.mimeType || '').indexOf('webp') >= 0 ? 'webp' : 'png');
+      download.download = 'BABA-AI-Scene-' + sceneNumber + '.' + ext;
+      download.textContent = '⬇️ यह तस्वीर डाउनलोड करें';
+      download.style.display = 'block';
+      download.style.padding = '12px 0';
+      download.style.color = '#b9a1ff';
+      card.appendChild(download);
+      if (item.sourceUrl) {
+        var attribution = document.createElement('p');
+        attribution.style.fontSize = '12px';
+        attribution.style.color = '#c6c9d5';
+        attribution.textContent = 'स्रोत: ' + (item.source || 'External image') + ' · ' + (item.sourceTitle || item.title || 'तस्वीर') + ' · लाइसेंस: ' + (item.license || 'स्रोत पेज पर देखें') + ' · श्रेय: ' + (item.credit || item.attribution || 'स्रोत पेज पर देखें');
+        card.appendChild(attribution);
+        var sourceLink = document.createElement('a');
+        sourceLink.href = item.sourceUrl;
+        sourceLink.target = '_blank';
+        sourceLink.rel = 'noopener noreferrer';
+        sourceLink.textContent = 'तस्वीर का मूल स्रोत और लाइसेंस देखें';
+        sourceLink.style.display = 'block';
+        sourceLink.style.color = '#b9a1ff';
+        card.appendChild(sourceLink);
+      }
+      info.appendChild(card);
+    });
+
+    // If quota was hit after some scenes succeeded, keep those images visible
+    // and show the provider's model/retry hint alongside them.
+    if (data.quotaInfo && data.quotaInfo.message) {
+      var quotaNotice = document.createElement('section');
+      quotaNotice.style.marginTop = '16px';
+      quotaNotice.style.padding = '12px';
+      quotaNotice.style.border = '1px solid #8b5a22';
+      quotaNotice.style.borderRadius = '10px';
+      quotaNotice.style.background = '#2a2115';
+      quotaNotice.style.color = '#ffd18a';
+      quotaNotice.setAttribute('role', 'alert');
+      quotaNotice.textContent = data.quotaInfo.message;
+      info.appendChild(quotaNotice);
+    }
+
+    if (Array.isArray(data.failedScenes) && data.failedScenes.length) {
+      var failures = document.createElement('section');
+      failures.style.marginTop = '16px';
+      var failuresTitle = document.createElement('h3');
+      failuresTitle.textContent = 'कुछ दृश्य नहीं बन पाए';
+      failures.appendChild(failuresTitle);
+      data.failedScenes.forEach(function(item) {
+        var failure = document.createElement('p');
+        failure.textContent = 'दृश्य ' + (item.scene || '?') + ': ' +
+          (item.title || 'वीडियो दृश्य') + ' — ' + (item.error || 'अस्थायी त्रुटि');
+        failures.appendChild(failure);
+      });
+      if (data.failedScenes.some(function(item){return Boolean(item.prompt);})) { var retry=document.createElement('button'); retry.className='secondary'; retry.textContent='🔁 केवल असफल दृश्य दोबारा बनाएँ'; retry.addEventListener('click',retryFailedSceneImages); failures.appendChild(retry); }
+      info.appendChild(failures);
+    }
+    status.textContent = '✅ ' + savedSceneImages.length + ' दृश्य-तस्वीरें उपलब्ध हैं।' +
+      (data.quotaInfo ? ' Gemini image quota खत्म हुई; पहले से बनी तस्वीरें सुरक्षित हैं।' :
+       (Array.isArray(data.failedScenes) && data.failedScenes.length ? ' कुछ दृश्य असफल रहे—विवरण नीचे है।' : ''));
+  } catch (error) {
+    // Never convert script text into a fake image. Keep only genuine generated/imported photos.
+    info.replaceChildren();
+    var errorText = document.createElement('p');
+    errorText.className = 'status error-status';
+    errorText.textContent = 'असली तस्वीरें नहीं मिलीं: ' + (error.message || 'अज्ञात त्रुटि');
+    info.appendChild(errorText);
+    var hint = document.createElement('p');
+    hint.className = 'small';
+    hint.textContent = 'अगर Gemini quota (429) खत्म है, तो AI तस्वीरें quota reset होने तक नहीं बनेंगी। ऐप उपलब्ध होने पर Wikimedia Commons की वास्तविक तस्वीरें इस्तेमाल करेगा। नीचे “स्थानीय / मुफ्त टूल से बनी तस्वीरें आयात करें” से असली PNG/JPG/WebP भी चुन सकते हैं।';
+    info.appendChild(hint);
+    status.textContent = '❌ असली तस्वीरें नहीं बन सकीं। कारण ऊपर देखें; नकली टेक्स्ट-स्लाइड नहीं बनाई गई।';
+  } finally {
+    button.disabled = false;
+  }
+}
+
+
+
+async function retryFailedSceneImages() {
+  var status=document.getElementById('featureStatus'), info=document.getElementById('featureInfo');
+  var pending=savedFailedScenes.filter(function(x){return typeof x.prompt==='string'&&x.prompt.trim();});
+  if(!pending.length){status.textContent='दोबारा बनाने के लिए saved failed-scene prompts नहीं हैं।';return;}
+  status.textContent='केवल '+pending.length+' असफल दृश्य दोबारा बनाए जा रहे हैं…';
+  try{
+    var resp=await fetch('/api/images',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({script:document.getElementById('script').value.trim(),scenePrompts:pending,visualStyle:document.getElementById('visualStyle')?.value||'3d-cartoon'})});
+    var data=await readApiJson(resp);
+    (data.images||[]).forEach(function(item){var ix=savedSceneImages.findIndex(function(old){return Number(old.scene)===Number(item.scene);});if(ix>=0)savedSceneImages[ix]=item;else savedSceneImages.push(item);});
+    savedFailedScenes=Array.isArray(data.failedScenes)?data.failedScenes:[];
+    if(!resp.ok&&!(data.images||[]).length)throw new Error(data.error||'Retry विफल।');
+    info.replaceChildren();var p=document.createElement('p');p.className='status';p.textContent='सफल तस्वीरें सुरक्षित हैं। कुल उपलब्ध: '+savedSceneImages.length+'; अभी असफल: '+savedFailedScenes.length;info.appendChild(p);
+    savedSceneImages.slice().sort(function(a,b){return Number(a.scene)-Number(b.scene);}).forEach(function(item){var im=document.createElement('img');im.src='data:'+(item.mimeType||'image/png')+';base64,'+item.imageBase64;im.alt=item.title||'Generated scene';im.style.width='100%';var a=document.createElement('a');a.href=im.src;a.download='BABA-AI-Scene-'+item.scene+'.png';a.textContent='तस्वीर डाउनलोड करें';info.append(im,a);});
+    if(data.quotaInfo&&data.quotaInfo.message){var q=document.createElement('p');q.className='status error-status';q.textContent=data.quotaInfo.message;info.appendChild(q);}
+    status.textContent='Failed-scene retry पूरा हुआ।';
+  }catch(e){status.textContent=e.message||'Retry विफल।';}
+}
+function createScriptSlides(script) {
+  var sentences=(script.match(/[^।.!?\n]+[।.!?\n]*/g)||[script]).map(function(x){return x.trim();}).filter(Boolean);
+  var chunks=[sentences.slice(0,3).join(' '),sentences.slice(3,6).join(' '),sentences.slice(6,9).join(' ')].filter(Boolean);
+  if(!chunks.length)chunks=[script.slice(0,500)];
+  return chunks.slice(0,3).map(function(text,index){
+    var c=document.createElement('canvas');c.width=1280;c.height=720;var x=c.getContext('2d');
+    x.fillStyle='#10121c';x.fillRect(0,0,1280,720);x.fillStyle='#b9a1ff';x.font='bold 42px Arial';x.fillText('BABA AI · SCRIPT SLIDE '+(index+1),70,95);
+    x.fillStyle='#ffffff';x.font='32px Arial';var line='',y=190;
+    text.split(/\s+/).forEach(function(word){var n=line?line+' '+word:word;if(x.measureText(n).width>1120){if(y<630)x.fillText(line,70,y);line=word;y+=54;}else line=n;});
+    if(line&&y<650)x.fillText(line,70,y);
+    return {scene:index+1,title:'Script slide '+(index+1),mimeType:'image/png',imageBase64:c.toDataURL('image/png').split(',')[1],isTextSlide:true};
+  });
+}
+
+async function decodeAudioToPcm24k(audioBase64, mimeType) {
+  var binary=atob(audioBase64), raw=new Uint8Array(binary.length);
+  for(var i=0;i<binary.length;i++) raw[i]=binary.charCodeAt(i);
+  if(/^audio\/(?:l16|pcm)(?:\s*;|$)/i.test(String(mimeType||'').trim())) return raw;
+  if(!/^audio\/(?:wav|x-wav|wave)(?:\s*;|$)/i.test(String(mimeType||'').trim()))
+    throw new Error('आवाज़ का format audio/wav या raw PCM होना चाहिए। मिला: '+String(mimeType||'unknown'));
+  var AC=window.AudioContext||window.webkitAudioContext;
+  if(!AC) throw new Error('इस browser में WAV conversion उपलब्ध नहीं है। Chrome में फिर कोशिश करें।');
+  var ctx=new AC();
+  try {
+    var decoded=await ctx.decodeAudioData(raw.buffer.slice(0)), channels=[];
+    for(var c=0;c<decoded.numberOfChannels;c++) channels.push(decoded.getChannelData(c));
+    var len=Math.max(1,Math.floor(decoded.duration*24000)), out=new Uint8Array(len*2), view=new DataView(out.buffer);
+    for(var n=0;n<len;n++){
+      var pos=n*decoded.sampleRate/24000, left=Math.floor(pos), frac=pos-left, sample=0;
+      for(var ch=0;ch<channels.length;ch++){
+        var a=channels[ch], v0=a[Math.min(left,a.length-1)]||0, v1=a[Math.min(left+1,a.length-1)]||0;
+        sample+=v0+(v1-v0)*frac;
+      }
+      sample=Math.max(-1,Math.min(1,sample/channels.length));
+      view.setInt16(n*2,sample<0?sample*32768:sample*32767,true);
+    }
+    return out;
+  } finally { if(ctx.close) await ctx.close().catch(function(){}); }
+}
+
+async function generateAutoVideo() {
+  var scriptText = document.getElementById('script').value.trim();
+  var status = document.getElementById('featureStatus');
+  var info = document.getElementById('featureInfo');
+  var button = document.getElementById('btnAutoRender');
+  if (!scriptText) { status.textContent = 'पहले script बनाएँ।'; return; }
+  // Build narration to the selected 1–5 minute target instead of silently making a 160-word excerpt.
+  // A Hindi narration averages roughly 120–140 words/minute; use 130 as an editable planning estimate.
+  var selectedMinutes = Math.max(1, Math.min(5, Number(document.getElementById('duration').value) || 1));
+  var targetWords = selectedMinutes * 130;
+  var allSentences = scriptText.match(/[^।.!?\n]+[।.!?\n]*/g) || [scriptText];
+  var excerpt = [], excerptWords = 0;
+  for (var si = 0; si < allSentences.length; si++) {
+    var sentence = allSentences[si].trim();
+    if (!sentence) continue;
+    var sentenceWords = sentence.split(/\s+/).length;
+    if (excerptWords + sentenceWords > targetWords && excerpt.length) break;
+    excerpt.push(sentence);
+    excerptWords += sentenceWords;
+    if (excerptWords >= targetWords) break;
+  }
+  var renderScriptText = excerpt.join(' ');
+  button.disabled = true;
+  info.replaceChildren();
+  var progress = document.createElement('p'); progress.className = 'status';
+  progress.textContent = scriptText.length > renderScriptText.length
+    ? 'चुनी गई '+selectedMinutes+' मिनट की अवधि के लिए narration तैयार कर रहा है; पूरी स्क्रिप्ट Studio में सुरक्षित रहेगी…'
+    : 'Step 1/3: AI scene images बना रहा है…';
+  info.appendChild(progress);
+  try {
+    var imageData={images:[]};
+    try{
+      var imageResp=await fetch('/api/images',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({script:renderScriptText,visualStyle:document.getElementById('visualStyle')?.value||'3d-cartoon'})});
+      var generated=await readApiJson(imageResp);
+      (generated.images||[]).forEach(function(item){var ix=savedSceneImages.findIndex(function(old){return Number(old.scene)===Number(item.scene);});if(ix>=0)savedSceneImages[ix]=item;else savedSceneImages.push(item);});
+      if(Array.isArray(generated.failedScenes))savedFailedScenes=generated.failedScenes;
+      if(!imageResp.ok&&!savedSceneImages.length)throw new Error(generated.error||'Images unavailable');
+      imageData.images=savedSceneImages.slice().sort(function(a,b){return Number(a.scene)-Number(b.scene);}).slice(0,3);
+    }catch(imageError){
+      if(savedSceneImages.length){imageData.images=savedSceneImages.slice().sort(function(a,b){return Number(a.scene)-Number(b.scene);}).slice(0,3);progress.textContent='Gemini image quota/error: पहले से बनी तस्वीरों से आगे बढ़ रहा है…';}
+      else{throw imageError;}
+    }
+    if(!imageData.images.length)throw new Error('MP4 बनाने के लिए scenes उपलब्ध नहीं हैं।');
+    progress.textContent = 'Step 2/3: हिंदी narration बना रहा है…';
+    var sentences = renderScriptText.match(/[^।.!?\n]+[।.!?\n]*/g) || [renderScriptText];
+    var chunks = [], current = '';
+    sentences.forEach(function(s) {
+      s=s.trim(); if(!s)return;
+      while(s.length>4500){ if(current){chunks.push(current);current='';} chunks.push(s.slice(0,4500));s=s.slice(4500); }
+      if(current && (current+' '+s).length>4500){chunks.push(current);current=s;}
+      else current=current?current+' '+s:s;
+    });
+    if(current)chunks.push(current);
+    if(chunks.length>12) throw new Error('स्क्रिप्ट बहुत लंबी है। अभी 12 voice clips तक support है; छोटी script चुनें।');
+    var pcmParts=[], mime='audio/L16;rate=24000';
+    for(var i=0;i<chunks.length;i++){
+      progress.textContent='Step 2/3: Voice clip '+(i+1)+'/'+chunks.length+'…';
+      var voiceResp=await fetch('/api/voice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:chunks[i]})});
+      var voiceData=await readApiJson(voiceResp);
+      if(!voiceResp.ok || !voiceData.audioBase64) throw new Error(voiceData.error || 'Voice generate नहीं हुई।');
+      var bytes=await decodeAudioToPcm24k(voiceData.audioBase64,voiceData.mimeType||'');
+      pcmParts.push(bytes);
+      mime='audio/L16;rate=24000';
+    }
+    var pcmLength=pcmParts.reduce(function(n,p){return n+p.length;},0);
+    if(pcmLength>8*1024*1024) throw new Error('Narration बहुत बड़ी है। छोटी script से retry करें।');
+    var merged=new Uint8Array(pcmLength), offset=0;
+    pcmParts.forEach(function(p){merged.set(p,offset);offset+=p.length;});
+    var binary=''; for(var k=0;k<merged.length;k+=32768) binary+=String.fromCharCode.apply(null,merged.subarray(k,k+32768));
+    var audioBase64=btoa(binary);
+    progress.textContent='Step 3/3: FFmpeg कम-मेमोरी 480p MP4 (लक्ष्य '+selectedMinutes+' मिनट) बना रहा है…';
+    var renderResp=await fetch('/api/render',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      scenes:imageData.images.map(function(x){return {mimeType:x.mimeType,imageBase64:x.imageBase64};}),
+      audioBase64:audioBase64,audioMime:mime
+    })});
+    var renderStart=await readApiJson(renderResp).catch(function(error){return {error:error.message};});
+    if(!renderResp.ok) throw new Error(renderStart.error||'Render job शुरू नहीं हुआ।');
+    if(!renderStart.jobId) throw new Error('Render job ID नहीं मिला।');
+    var jobStatus=null, renderStartedAt=Date.now();
+    var temporaryStatusFailures=0;
+    while(Date.now()-renderStartedAt<12*60*1000){
+      await new Promise(function(resolve){setTimeout(resolve,1800);});
+      var statusResp;
+      try {
+        statusResp=await fetch('/api/render/status/'+encodeURIComponent(renderStart.jobId),{cache:'no-store'});
+      } catch(networkError) {
+        temporaryStatusFailures++;
+        if(temporaryStatusFailures<=8){
+          progress.textContent='Render server से अस्थायी संपर्क समस्या ('+temporaryStatusFailures+'/8)। अपने-आप दोबारा जाँच रहे हैं…';
+          await new Promise(function(resolve){setTimeout(resolve,1500);});
+          continue;
+        }
+        throw new Error('Render server से संपर्क नहीं हो रहा। Server restart/OOM हो सकता है। Render logs देखें; काम फिर से चलाने से पहले deployment स्वस्थ होने दें।');
+      }
+      if(statusResp.status===502||statusResp.status===503||statusResp.status===504){
+        temporaryStatusFailures++;
+        if(temporaryStatusFailures<=8){
+          progress.textContent='Render server अस्थायी रूप से व्यस्त है (HTTP '+statusResp.status+')। दोबारा जाँच रहे हैं…';
+          await new Promise(function(resolve){setTimeout(resolve,1500);});
+          continue;
+        }
+      } else temporaryStatusFailures=0;
+      jobStatus=await readApiJson(statusResp).catch(function(error){return {error:error.message};});
+      if(!statusResp.ok) {
+        if(statusResp.status===404) throw new Error('Render job server restart के बाद खो गया हो सकता है। पहले deployment स्वस्थ होने दें, फिर MP4 दोबारा बनाएँ।');
+        throw new Error(jobStatus.error||'Render status नहीं मिल सका (HTTP '+statusResp.status+').');
+      }
+      if(jobStatus.status==='failed') throw new Error(jobStatus.error||'MP4 render नहीं हुआ।');
+      if(jobStatus.status==='completed') break;
+      progress.textContent=jobStatus.status==='queued'?'Render queue में है…':'Step 3/3: कम-मेमोरी FFmpeg background में MP4 बना रहा है…';
+    }
+    if(!jobStatus||jobStatus.status!=='completed') throw new Error('Render में 12 मिनट से अधिक लग गए। यह job server restart पर खो सकती है; status जाँचकर retry करें।');
+    var downloadResp=await fetch('/api/render/download/'+encodeURIComponent(renderStart.jobId));
+    if(!downloadResp.ok){var downloadError=await readApiJson(downloadResp).catch(function(error){return {error:error.message};});throw new Error(downloadError.error||'MP4 डाउनलोड नहीं हुआ।');}
+    lastRenderedVideoBlob=await downloadResp.blob();
+    if(lastRenderedVideoUrl)URL.revokeObjectURL(lastRenderedVideoUrl);
+    lastRenderedVideoUrl=URL.createObjectURL(lastRenderedVideoBlob);
+    info.replaceChildren();
+    var heading=document.createElement('h3');heading.textContent='🎉 आपका MP4 वीडियो तैयार है';info.appendChild(heading);
+    var player=document.createElement('video');player.controls=true;player.src=lastRenderedVideoUrl;player.style.width='100%';player.style.borderRadius='10px';info.appendChild(player);
+    var download=document.createElement('a');download.href=lastRenderedVideoUrl;download.download='BABA-AI-Video.mp4';download.textContent='⬇️ MP4 डाउनलोड करें';download.style.display='block';download.style.padding='12px 0';download.style.color='#b9a1ff';info.appendChild(download);
+    var uploadBtn=document.createElement('button');uploadBtn.className='green';uploadBtn.textContent='📤 इस वीडियो को YouTube पर भेजें';uploadBtn.addEventListener('click',function(){showUploadForm();});info.appendChild(uploadBtn);
+    status.textContent='✅ MP4 तैयार ('+(lastRenderedVideoBlob.size/1024/1024).toFixed(1)+' MB)। Preview देखें।';
+  } catch(error) { progress.textContent='❌ '+(error.message||'Video pipeline failed');status.textContent='वीडियो बनाते समय समस्या हुई।'; }
+  finally { button.disabled=false; }
+}
+
+function showFeature(feature) {
+  var detail = featureDetails[feature];
+  var status = document.getElementById('featureStatus');
+  var info = document.getElementById('featureInfo');
+
+  if (!detail) {
+    status.textContent = 'यह फीचर उपलब्ध नहीं है।';
+    info.style.display = 'none';
+    return;
+  }
+
+
+  if (feature === 'video') {
+    var scriptText = document.getElementById('script').value.trim();
+    if (!scriptText) {
+      status.textContent = 'पहले AI Script Studio में स्क्रिप्ट बनाएँ।';
+      info.textContent = 'पहले विषय भरकर पूरी AI स्क्रिप्ट बनाएँ।';
+      info.style.display = 'block';
+      return;
+    }
+    info.replaceChildren();
+    var note = document.createElement('p');
+    note.className = 'small';
+    note.textContent = 'यह pipeline चुनी गई 1–5 मिनट की narration, अधिकतम 3 तस्वीरें और हिंदी आवाज़ जोड़कर 480p MP4 slideshow बनाएगी। Free server पर 4–5 मिनट के render में संसाधन सीमा आ सकती है; Gemini API quota लागू हो सकती है।';
+    info.appendChild(note);
+    var generate = document.createElement('button');
+    generate.id = 'btnAutoRender';
+    generate.className = 'green';
+    generate.textContent = '✨ तस्वीरें + हिंदी आवाज़ + MP4 बनाएँ';
+    generate.addEventListener('click', generateAutoVideo);
+    info.appendChild(generate);
+    info.style.display = 'block';
+    status.textContent = 'स्वचालित वीडियो pipeline तैयार है।';
+    return;
+  }
+
+  if (feature === 'thumbnail') {
+    var titleText = (document.getElementById('topic')?.value || document.getElementById('title')?.value || document.getElementById('script').value.split(/[।.!?\\n]/)[0] || 'BABA AI VIDEO').trim().slice(0,90);
+    if (!titleText) titleText = 'BABA AI VIDEO';
+    info.replaceChildren();
+    var note = document.createElement('p');
+    note.className = 'small';
+    note.textContent = 'यह थंबनेल ब्राउज़र में Canvas से बनाया जाएगा। यह Gemini की AI तस्वीर नहीं है; आप इसे डाउनलोड करके इस्तेमाल कर सकते हैं।';
+    info.appendChild(note);
+    var canvas = document.createElement('canvas');
+    canvas.width = 1280; canvas.height = 720;
+    var ctx = canvas.getContext('2d');
+    var grad = ctx.createLinearGradient(0,0,1280,720);
+    grad.addColorStop(0,'#17152f'); grad.addColorStop(0.55,'#5426a8'); grad.addColorStop(1,'#e04d28');
+    ctx.fillStyle=grad; ctx.fillRect(0,0,1280,720);
+    ctx.fillStyle='rgba(0,0,0,0.34)'; ctx.fillRect(35,35,1210,650);
+    ctx.strokeStyle='#ffd34e'; ctx.lineWidth=12; ctx.strokeRect(42,42,1196,636);
+    ctx.fillStyle='#ffd34e'; ctx.font='bold 42px sans-serif'; ctx.textAlign='left'; ctx.fillText('BABA AI • YOUTUBE',80,120);
+    var words=titleText.split(/\\s+/), lines=[], line='';
+    words.forEach(function(word){var test=line?line+' '+word:word;if(ctx.measureText(test).width>1080&&line){lines.push(line);line=word;}else line=test;});
+    if(line)lines.push(line);
+    lines=lines.slice(0,3);
+    var fontSize=lines.length===1?94:lines.length===2?82:70;
+    ctx.font='900 '+fontSize+'px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    var lineHeight=fontSize*1.18, startY=390-((lines.length-1)*lineHeight/2);
+    lines.forEach(function(text,index){ctx.lineWidth=12;ctx.strokeStyle='#111111';ctx.strokeText(text,640,startY+index*lineHeight,1080);ctx.fillStyle='#ffffff';ctx.fillText(text,640,startY+index*lineHeight,1080);});
+    ctx.fillStyle='#ffda55';ctx.font='bold 34px sans-serif';ctx.fillText('देखें अभी!  •  LIKE  •  SUBSCRIBE',640,625,1080);
+    var preview=document.createElement('img');preview.alt='Generated BABA AI thumbnail';preview.src=canvas.toDataURL('image/png');preview.style.width='100%';preview.style.borderRadius='10px';preview.style.display='block';info.appendChild(preview);
+    var download=document.createElement('a');download.href=preview.src;download.download='BABA-AI-Thumbnail.png';download.textContent='⬇️ थंबनेल PNG डाउनलोड करें';download.style.display='block';download.style.padding='14px 0';download.style.color='#b9a1ff';info.appendChild(download);
+    status.textContent='✅ थंबनेल तैयार है। इसे PNG में डाउनलोड करें।';
+    info.style.display='block';
+    return;
+  }
+
+  if (feature === 'images') {
+    var script = document.getElementById('script').value.trim();
+    if (!script) {
+      status.textContent = 'पहले AI Script Studio में स्क्रिप्ट बनाएँ।';
+      info.textContent = 'ऊपर स्क्रिप्ट तैयार करें, फिर तस्वीरें बनाएँ।';
+      info.style.display = 'block';
+      return;
+    }
+
+    status.textContent = 'तस्वीरें बनाने के लिए तैयार।';
+    info.replaceChildren();
+    var intro = document.createElement('p');
+    intro.textContent = 'स्क्रिप्ट से अधिकतम 3 दृश्य-तस्वीरें Gemini से जनरेट होंगी। यदि quota या model access की समस्या हो, तो नीचे उसका कारण दिखेगा। आप अपने कंप्यूटर/फोन या स्थानीय ComfyUI/Stable Diffusion से बनाई गई PNG/JPEG/WebP तस्वीरें भी चुन सकते हैं।';
+    info.appendChild(intro);
+    var localLabel=document.createElement('label');localLabel.textContent='स्थानीय / मुफ्त टूल से बनी तस्वीरें आयात करें (अधिकतम 3)';
+    var localInput=document.createElement('input');localInput.type='file';localInput.accept='image/png,image/jpeg,image/webp';localInput.multiple=true;
+    localInput.addEventListener('change',function(){
+      var files=Array.from(localInput.files||[]).filter(function(file){return /^image\/(png|jpeg|webp)$/.test(file.type);}).slice(0,3);
+      if(!files.length){status.textContent='PNG, JPEG या WebP तस्वीर चुनें।';return;}
+      Promise.all(files.map(function(file,index){return new Promise(function(resolve,reject){
+        var reader=new FileReader();reader.onload=function(){try{var data=String(reader.result);resolve({scene:index+1,title:file.name,mimeType:file.type,imageBase64:data.split(',')[1],isLocalImage:true});}catch(e){reject(e);}};
+        reader.onerror=reject;reader.readAsDataURL(file);
+      });})).then(function(items){
+        savedSceneImages=items;savedFailedScenes=[];
+        status.textContent='✅ '+items.length+' स्थानीय तस्वीरें आयात हुईं। अब इन्हें MP4 render में इस्तेमाल कर सकते हैं।';
+        var note=document.createElement('p');note.className='status';note.textContent='स्थानीय तस्वीरें सफलतापूर्वक लोड हुईं; कोई AI image-generation दावा नहीं किया गया।';info.appendChild(note);
+      }).catch(function(){status.textContent='तस्वीरें पढ़ी नहीं जा सकीं। दूसरी फ़ाइल चुनें।';});
+    });
+    info.appendChild(localLabel);info.appendChild(localInput);
+
+    var generateButton = document.createElement('button');
+    generateButton.id = 'btnGenerateSceneImages';
+    generateButton.textContent = '🖼️ 3 दृश्य-तस्वीरें जनरेट करें';
+    generateButton.addEventListener('click', generateSceneImages);
+    info.appendChild(generateButton);
+    info.style.display = 'block';
+    return;
+  }
+
+  if (feature === 'voice') {
+    var script = document.getElementById('script').value.trim();
+
+    if (!script) {
+      status.textContent = 'पहले स्क्रिप्ट बनाएँ।';
+      info.textContent = 'AI Script Studio में पहले हिंदी स्क्रिप्ट लिखें।';
+      info.style.display = 'block';
+      return;
+    }
+
+    status.textContent = 'हिंदी आवाज़ बनाई जा रही है...';
+    info.textContent = 'कृपया प्रतीक्षा करें।';
+    info.style.display = 'block';
+
+    // Gemini TTS endpoint पर हर अनुरोध 5,000 अक्षरों से छोटा रखें।
+    // वाक्य-सीमाओं पर बाँटें ताकि बोले जाने वाले क्लिप स्वाभाविक रहें।
+    function splitVoiceText(value, maxLength) {
+      var sentences = value.match(/[^।.!?\n]+[।.!?\n]*/g) || [value];
+      var chunks = [];
+      var current = '';
+
+      sentences.forEach(function(sentence) {
+        sentence = sentence.trim();
+        if (!sentence) return;
+
+        // बहुत लंबा वाक्य हो तो शब्दों के बीच में बाँटें।
+        if (sentence.length > maxLength) {
+          if (current) { chunks.push(current); current = ''; }
+          var words = sentence.split(/\s+/);
+          var piece = '';
+          words.forEach(function(word) {
+            if (piece && (piece + ' ' + word).length > maxLength) {
+              chunks.push(piece);
+              piece = word;
+            } else {
+              piece = piece ? piece + ' ' + word : word;
+            }
+          });
+          if (piece) chunks.push(piece);
+          return;
+        }
+
+        if (current && (current + ' ' + sentence).length > maxLength) {
+          chunks.push(current);
+          current = sentence;
+        } else {
+          current = current ? current + ' ' + sentence : sentence;
+        }
+      });
+
+      if (current) chunks.push(current);
+      return chunks;
+    }
+
+    function decodeAudioBase64(base64) {
+      var binary = atob(base64);
+      var bytes = new Uint8Array(binary.length);
+      for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return bytes;
+    }
+
+    // Gemini अक्सर raw 16-bit PCM (audio/L16) देता है। WAV header जोड़ने
+    // से ब्राउज़र में क्लिप चलाना आसान होता है।
+    function pcmToWav(pcm, mimeType) {
+      if (!/^audio\/l16/i.test(mimeType || '')) return pcm;
+
+      var rateMatch = (mimeType || '').match(/rate=(\d+)/i);
+      var sampleRate = rateMatch ? Number(rateMatch[1]) : 24000;
+      var channels = 1;
+      var header = new ArrayBuffer(44);
+      var view = new DataView(header);
+      function writeText(offset, value) {
+        for (var i = 0; i < value.length; i++) view.setUint8(offset + i, value.charCodeAt(i));
+      }
+      writeText(0, 'RIFF');
+      view.setUint32(4, 36 + pcm.length, true);
+      writeText(8, 'WAVE');
+      writeText(12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, channels, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * channels * 2, true);
+      view.setUint16(32, channels * 2, true);
+      view.setUint16(34, 16, true);
+      writeText(36, 'data');
+      view.setUint32(40, pcm.length, true);
+      return new Uint8Array([new Uint8Array(header), pcm].reduce(function(acc, part) {
+        var joined = new Uint8Array(acc.length + part.length);
+        joined.set(acc, 0);
+        joined.set(part, acc.length);
+        return joined;
+      }, new Uint8Array(0)));
+    }
+
+    (async function() {
+      var chunks = splitVoiceText(script, 4200);
+      info.replaceChildren();
+      var note = document.createElement('p');
+      note.textContent = 'स्क्रिप्ट को ' + chunks.length + ' छोटे ऑडियो हिस्सों में बनाया जाएगा।';
+      info.appendChild(note);
+
+      var rawAudioParts = [];
+      var allPartsArePcm = true;
+      var firstMimeType = '';
+      for (var index = 0; index < chunks.length; index++) {
+        status.textContent = 'हिंदी आवाज़ बनाई जा रही है: ' + (index + 1) + '/' + chunks.length;
+        note.textContent = 'ऑडियो क्लिप ' + (index + 1) + '/' + chunks.length + ' तैयार हो रही है…';
+
+        var response = await fetch('/api/voice', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: chunks[index] })
+        });
+        var data = await readApiJson(response);
+        if (!response.ok) throw new Error(data.error || ('क्लिप ' + (index + 1) + ' नहीं बन सकी।'));
+        if (!data.audioBase64) throw new Error('क्लिप ' + (index + 1) + ' में ऑडियो नहीं मिला।');
+
+        var audioBytes = decodeAudioBase64(data.audioBase64);
+        if (index === 0) firstMimeType = data.mimeType || '';
+        if (!/^audio\/l16/i.test(data.mimeType || '')) allPartsArePcm = false;
+        rawAudioParts.push(audioBytes);
+        var playableBytes = pcmToWav(audioBytes, data.mimeType);
+        var blob = new Blob([playableBytes], { type: 'audio/wav' });
+        var url = URL.createObjectURL(blob);
+
+        var clip = document.createElement('section');
+        clip.style.marginTop = '14px';
+        var heading = document.createElement('p');
+        heading.textContent = '🎙️ आवाज़ का हिस्सा ' + (index + 1);
+        clip.appendChild(heading);
+
+        var audio = document.createElement('audio');
+        audio.controls = true;
+        audio.src = url;
+        audio.style.width = '100%';
+        clip.appendChild(audio);
+
+        var link = document.createElement('a');
+        link.href = url;
+        link.download = 'BABA-AI-Voice-Part-' + (index + 1) + '.wav';
+        link.textContent = 'यह ऑडियो हिस्सा डाउनलोड करें';
+        link.style.display = 'block';
+        link.style.padding = '10px 0';
+        clip.appendChild(link);
+        info.appendChild(clip);
+      }
+
+      if (allPartsArePcm && rawAudioParts.length) {
+        var totalBytes = rawAudioParts.reduce(function(total, part) { return total + part.length; }, 0);
+        var mergedPcm = new Uint8Array(totalBytes);
+        var cursor = 0;
+        rawAudioParts.forEach(function(part) { mergedPcm.set(part, cursor); cursor += part.length; });
+        var mergedWav = pcmToWav(mergedPcm, firstMimeType);
+        var mergedUrl = URL.createObjectURL(new Blob([mergedWav], { type: 'audio/wav' }));
+        var finalSection = document.createElement('section');
+        finalSection.style.marginTop = '18px';
+        var finalHeading = document.createElement('h3');
+        finalHeading.textContent = '✅ पूरी आवाज़ (सभी हिस्से जुड़े हुए)';
+        finalSection.appendChild(finalHeading);
+        var finalAudio = document.createElement('audio');
+        finalAudio.controls = true;
+        finalAudio.src = mergedUrl;
+        finalAudio.style.width = '100%';
+        finalSection.appendChild(finalAudio);
+        var finalLink = document.createElement('a');
+        finalLink.href = mergedUrl;
+        finalLink.download = 'BABA-AI-Voice-Full.wav';
+        finalLink.textContent = 'पूरी हिंदी आवाज़ डाउनलोड करें';
+        finalLink.style.display = 'block';
+        finalLink.style.padding = '12px 0';
+        finalSection.appendChild(finalLink);
+        info.insertBefore(finalSection, info.children[1] || null);
+      }
+      note.textContent = 'सभी ' + chunks.length + ' आवाज़ के हिस्से तैयार हैं। इन्हें क्रम से सुनें/डाउनलोड करें।';
+      status.textContent = 'हिंदी आवाज़ तैयार है (' + chunks.length + ' क्लिप)।';
+    })().catch(function(error) {
+      status.textContent = 'आवाज़ बनाने में समस्या हुई।';
+      var errorNote = document.createElement('p');
+      errorNote.textContent = error.message || 'आवाज़ नहीं बन सकी।';
+      info.appendChild(errorNote);
+    });
+
+    return;
+  }
+
+  status.textContent = detail.msg;
+  info.innerHTML = '<div class="info-box">' + detail.info + '</div>';
+  info.style.display = 'block';
+}
+
+
+try {
+  var saved = JSON.parse(localStorage.getItem('babaAIProject') || 'null');
+  if (saved) {
+    document.getElementById('topic').value = saved.topic || '';
+    document.getElementById('duration').value = saved.duration || '30';
+    document.getElementById('language').value = saved.language || 'हिंदी';
+    document.getElementById('script').value = saved.script || '';
+    if (saved.seo) {
+      currentSEO = saved.seo;
+      var seoDiv = document.getElementById('seoResult');
+      seoDiv.textContent = saved.seo;
+      seoDiv.style.display = 'block';
+    }
+  }
+} catch (e) {}
+</script>
+
+<script>
+(function () {
+  'use strict';
+  var KEY='babaAIWorkflowCheckpointV1';
+  var stages=['विषय','स्क्रिप्ट','SEO','आवाज़','तस्वीरें','MP4 वीडियो','YouTube अपलोड'];
+  function el(id){return document.getElementById(id);}
+  function previous(){try{return JSON.parse(localStorage.getItem(KEY)||'{}')||{};}catch(_){return {};}}
+  function render(data){
+    var node=el('workflowCheckpointStages'); if(!node)return;
+    var done=Array.isArray(data.completed)?data.completed:[];
+    node.textContent='चरण स्थिति: '+stages.map(function(s){return (done.indexOf(s)>=0?'✅ ':'⬜ ')+s;}).join(' · ')+(data.updatedAt?' | आखिरी सेव: '+new Date(data.updatedAt).toLocaleString():'');
+  }
+  function snapshot(){
+    var old=previous(),topic=el('topic')?.value||'';
+    // नया विषय चुने जाने पर पिछली वीडियो के completed चरण विरासत में न लें।
+    var completed=old.topic===topic&&Array.isArray(old.completed)?old.completed:[];
+    return {version:1,updatedAt:new Date().toISOString(),topic:topic,duration:el('duration')?.value||'30',language:el('language')?.value||'हिंदी',script:el('script')?.value||'',seo:typeof currentSEO==='string'?currentSEO:'',completed:completed,lastStatus:old.lastStatus||''};
+  }
+  function setStatus(s){if(el('workflowCheckpointStatus'))el('workflowCheckpointStatus').textContent=s;}
+  window.saveWorkflowCheckpoint=function(manual){
+    try{var d=snapshot();localStorage.setItem(KEY,JSON.stringify(d));localStorage.setItem('babaAIProject',JSON.stringify({topic:d.topic,duration:d.duration,language:d.language,script:d.script,seo:d.seo}));render(d);setStatus(manual?'✅ Checkpoint सेव हो गया। कल इसी ब्राउज़र में वापस आकर “सेव काम वापस लाएँ” दबाएँ।':'✅ प्रगति अपने-आप सेव हो गई।');return true;}
+    catch(_){setStatus('❌ सेव नहीं हुआ। Backup JSON डाउनलोड करके रखें।');return false;}
+  };
+  window.restoreWorkflowCheckpoint=function(manual){
+    try{var raw=localStorage.getItem(KEY)||localStorage.getItem('babaAIProject');if(!raw){setStatus('कोई सेव किया हुआ प्रोजेक्ट नहीं मिला।');return false;}var d=JSON.parse(raw);
+      if(el('topic'))el('topic').value=d.topic||'';if(el('duration'))el('duration').value=d.duration||'30';if(el('language'))el('language').value=d.language||'हिंदी';if(el('script'))el('script').value=d.script||'';
+      if(typeof d.seo==='string'){currentSEO=d.seo;var seo=el('seoResult');if(seo){seo.textContent=d.seo;seo.style.display=d.seo?'block':'none';}}
+      render(d);setStatus(manual?'✅ विषय, स्क्रिप्ट और SEO वापस आ गए। अब अधूरे चरण को दोबारा चलाएँ।':'पिछला checkpoint उपलब्ध है।');return true;
+    }catch(_){setStatus('❌ सेव डेटा पढ़ा नहीं जा सका।');return false;}
+  };
+  window.exportWorkflowCheckpoint=function(){
+    var d=snapshot(),blob=new Blob([JSON.stringify(d,null,2)],{type:'application/json;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download='BABA-AI-Workflow-Checkpoint.json';a.click();setTimeout(function(){URL.revokeObjectURL(url);},1000);setStatus('✅ Backup JSON डाउनलोड शुरू हुआ। इसे सुरक्षित रखें।');
+  };
+  function mark(stage){
+    try{var d=snapshot();if(d.completed.indexOf(stage)<0)d.completed.push(stage);d.updatedAt=new Date().toISOString();localStorage.setItem(KEY,JSON.stringify(d));localStorage.setItem('babaAIProject',JSON.stringify({topic:d.topic,duration:d.duration,language:d.language,script:d.script,seo:d.seo}));render(d);}catch(_){}
+  }
+  window.markWorkflowStage=mark;
+  window.resetWorkflowStages=function(){
+    try{var d=snapshot();d.completed=[];d.updatedAt=new Date().toISOString();localStorage.setItem(KEY,JSON.stringify(d));render(d);}catch(_){}
+  };
+  function inspect(){
+    var t=(el('result')?.textContent||'')+' '+(el('featureStatus')?.textContent||'');
+    if(/पूरी AI स्क्रिप्ट तैयार|स्क्रिप्ट तैयार हो गई/i.test(t))mark('स्क्रिप्ट');
+    if(/SEO तैयार हो गया|SEO तैयार हो गई/i.test(t))mark('SEO');
+    if(/आवाज़ तैयार है|आवाज़ के हिस्से तैयार/i.test(t))mark('आवाज़');
+    if(/दृश्य-तस्वीरें तैयार हैं|तस्वीरें तैयार/i.test(t))mark('तस्वीरें');
+    if(/MP4 तैयार|वीडियो तैयार/i.test(t))mark('MP4 वीडियो');
+    if(/Upload सफल/i.test(t))mark('YouTube अपलोड');
+    if(el('topic')?.value.trim())mark('विषय');
+    window.saveWorkflowCheckpoint(false);
+  }
+  document.addEventListener('DOMContentLoaded',function(){
+    ['topic','duration','language','script'].forEach(function(id){var n=el(id);if(n){n.addEventListener('input',function(){window.saveWorkflowCheckpoint(false);});n.addEventListener('change',function(){window.saveWorkflowCheckpoint(false);});}});
+    var f=el('workflowImportFile');if(f)f.addEventListener('change',function(){var file=f.files&&f.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(){try{var d=JSON.parse(String(reader.result||'{}'));if(d.version!==1||typeof d.topic!=='string')throw Error('bad backup');localStorage.setItem(KEY,JSON.stringify(d));window.restoreWorkflowCheckpoint(true);}catch(_){setStatus('❌ Backup JSON सही नहीं है।');}f.value='';};reader.readAsText(file);});
+    var observer=new MutationObserver(inspect);['result','featureStatus','seoResult'].forEach(function(id){if(el(id))observer.observe(el(id),{childList:true,subtree:true,characterData:true});});
+    if(localStorage.getItem(KEY)){try{render(previous());setStatus('पिछला checkpoint मिला। “सेव काम वापस लाएँ” दबाकर जारी रखें।');}catch(_){}}else window.saveWorkflowCheckpoint(false);
+  });
+})();
+</script>
+\n</body>
+</html>
